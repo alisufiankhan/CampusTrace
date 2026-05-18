@@ -2,34 +2,43 @@
 #include <iostream>
 
 Person::Person(std::string name, std::string ID, std::string contact, std::string password) {
-    // TODO: Initialize all attributes (name, ID, contact, password)
+    this->name = name;
+    this->ID = ID;
+    this->contact = contact;
+    this->password = password;
 }
 
 bool Person::login() {
-    // TODO: Check ID and password and return true if correct, false if not
+    std::string inputID, inputPassword;
+    std::cout << "Enter ID: ";
+    std::cin >> inputID;
+    std::cout << "Enter Password: ";
+    std::cin >> inputPassword;
+    
+    if (inputID == this->ID && inputPassword == this->password) {
+        return true;
+    }
     return false;
 }
 
 void Person::getInfo() {
-    // TODO: Print all person details to console
+    std::cout << "Name: " << name << "\n"
+              << "ID: " << ID << "\n"
+              << "Contact: " << contact << std::endl;
 }
 
 std::string Person::getName() {
-    // TODO: Return name attribute
-    return "";
+    return name;
 }
 
 std::string Person::getID() {
-    // TODO: Return ID attribute
-    return "";
+    return ID;
 }
 
 std::string Person::getContact() {
-    // TODO: Return contact attribute
-    return "";
+    return contact;
 }
 
 std::string Person::getPassword() {
-    // TODO: Return password attribute
-    return "";
+    return password;
 }
