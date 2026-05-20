@@ -1,220 +1,246 @@
-#include <iostream>
-#include <vector>
-#include <string>
-#include <limits>
-#include "include/FileManager.h"
-#include "include/Item.h"
-#include "include/Claim.h"
 #include "include/Person.h"
 #include "include/Student.h"
 #include "include/Admin.h"
-#include "include/Report.h"
+#include "include/Item.h"
+#include "include/ElectronicItem.h"
+#include "include/DocumentItem.h"
+#include "include/PersonalItem.h"
+#include "include/Transaction.h"
+#include "include/Claim.h"
+#include "include/Handover.h"
+#include "include/Reward.h"
 #include "include/SearchLog.h"
+#include "include/Report.h"
+#include "include/FileManager.h"
+#include "include/MatchEngine.h"
+#include <iostream>
+#include <vector>
+#include <string>
+#include <fstream>
+#include <ctime>
+#include <algorithm>
+#include <limits>
 
-// Global storage as requested
-std::vector<Item*> globalItems;
-std::vector<Claim*> globalClaims;
-std::vector<Person*> globalUsers;
+std::vector<Claim*> allClaims;
 
-void adminMenu(Admin* admin, FileManager& fm) {
-    while (true) {
-        std::cout << "\n=== Admin Menu ===\n";
-        std::cout << "1. Register new found item\n";
-        std::cout << "2. View all items\n";
-        std::cout << "3. Review pending claims\n";
-        std::cout << "4. Process handover\n";
-        std::cout << "5. Generate report\n";
-        std::cout << "6. View flagged students\n";
-        std::cout << "7. Logout\n";
-        std::cout << "Choice: ";
-        
-        int choice;
-        if (!(std::cin >> choice)) {
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            std::cout << "Invalid input. Try again.\n";
-            continue;
-        }
-
-        if (choice == 1) {
-            admin->addItem();
-            fm.saveItems(globalItems);
-        } else if (choice == 2) {
-            std::cout << "--- All Items ---\n";
-            for (Item* item : globalItems) {
-                std::cout << "- [" << item->getItemID() << "] " 
-                          << item->getDesc() << " (" << item->getStatus() << ")\n";
-            }
-        } else if (choice == 3) {
-            std::cout << "--- Pending Claims ---\n";
-            for (Claim* claim : globalClaims) {
-                if (claim->getClaimStatus() == "Pending" || claim->getClaimStatus() == "UnderReview") {
-                    std::cout << "Claim ID: " << claim->getClaimID() 
-                              << ", Item: " << claim->getItem()->getDesc() 
-                              << ", Proof: " << claim->getProof() << "\n";
-                }
-            }
-            std::cout << "1. Approve Claim\n2. Reject Claim\n3. Back\nChoice: ";
-            int subChoice;
-            if (!(std::cin >> subChoice)) {
-                std::cin.clear();
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                continue;
-            }
-            if (subChoice == 1) admin->approveClaim();
-            else if (subChoice == 2) admin->rejectClaim();
-            fm.saveClaims(globalClaims);
-        } else if (choice == 4) {
-            admin->processHandover();
-            fm.saveItems(globalItems);
-        } else if (choice == 5) {
-            Report rpt("RPT001", admin->getName(), "All Time");
-            rpt.generateReport();
-        } else if (choice == 6) {
-            std::cout << "--- Flagged Students ---\n";
-            bool found = false;
-            for (Person* p : globalUsers) {
-                Student* s = dynamic_cast<Student*>(p);
-                if (s && s->getIsFlagged()) {
-                    std::cout << "- " << s->getName() << " (ID: " << s->getID() << ", Rejections: " << s->getRejections() << ")\n";
-                    found = true;
-                }
-            }
-            if (!found) std::cout << "No flagged students.\n";
-        } else if (choice == 7) {
-            std::cout << "Logging out...\n";
-            break;
-        } else {
-            std::cout << "Invalid choice.\n";
-        }
-    }
+void clearScreen() {
+    // Basic screen clear
+    #ifdef _WIN32
+        system("cls");
+    #else
+        system("clear");
+    #endif
 }
 
-void studentMenu(Student* student, FileManager& fm) {
-    while (true) {
-        std::cout << "\n=== Student Menu ===\n";
-        std::cout << "1. Search for item by keyword\n";
-        std::cout << "2. View my claims\n";
-        std::cout << "3. Submit new claim\n";
-        std::cout << "4. View my status\n";
-        std::cout << "5. Logout\n";
-        std::cout << "Choice: ";
-        
-        int choice;
-        if (!(std::cin >> choice)) {
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            std::cout << "Invalid input. Try again.\n";
-            continue;
-        }
-
-        if (choice == 1) {
-            std::string keyword;
-            std::cout << "Enter keyword: ";
-            std::cin >> keyword;
-            
-            SearchLog log("SL1", keyword, "2026-05-18", student->getID());
-            log.logSearch();
-            
-            std::cout << "--- Search Results ---\n";
-            bool found = false;
-            for (Item* item : globalItems) {
-                if (item->getDesc().find(keyword) != std::string::npos) {
-                    std::cout << "- [" << item->getItemID() << "] " 
-                              << item->getDesc() << " (" << item->getStatus() << ")\n";
-                    found = true;
-                }
-            }
-            if (!found) std::cout << "No matching items found.\n";
-        } else if (choice == 2) {
-            student->viewStatus();
-        } else if (choice == 3) {
-            student->claimItem();
-            fm.saveClaims(globalClaims);
-            fm.saveItems(globalItems);
-        } else if (choice == 4) {
-            std::cout << "--- My Trust Status ---\n";
-            std::cout << "Rejections: " << student->getRejections() << "/3\n";
-            std::cout << "Flagged: " << (student->getIsFlagged() ? "Yes" : "No") << "\n";
-        } else if (choice == 5) {
-            std::cout << "Logging out...\n";
-            break;
-        } else {
-            std::cout << "Invalid choice.\n";
-        }
-    }
+std::string currentDate() {
+    time_t now = time(0);
+    struct tm tstruct;
+    char buf[80];
+    tstruct = *localtime(&now);
+    strftime(buf, sizeof(buf), "%d-%m-%Y", &tstruct);
+    return std::string(buf);
 }
 
 int main() {
-    FileManager fm;
-    // Load data from files
-    fm.loadItems(globalItems);
-    fm.loadClaims(globalClaims);
+    FileManager fileManager("data/items.txt", "data/users.txt", "data/claims.txt");
+    std::vector<Item*> allItems = fileManager.loadItems();
+    allClaims = fileManager.loadClaims();
 
-    // Hardcode some users so we can login and test the system
-    globalUsers.push_back(new Admin("Admin Ali", "admin", "123456", "adminpass", "A01", "Morning"));
-    globalUsers.push_back(new Student("Student Bob", "student", "654321", "studentpass", "R01", "CS"));
+    std::vector<Person*> allUsers;
+    allUsers.push_back(new Admin("Admin One", "A001", "0300-1234567", "admin123", "ADM001", "Morning"));
+    allUsers.push_back(new Student("Ali Sufian", "S001", "0301-1234567", "ali123", "B25F0559AI154", "AI"));
+    allUsers.push_back(new Student("Amina Shafique", "S002", "0302-1234567", "amina123", "B25F2267AI157", "AI"));
+    allUsers.push_back(new Student("Umama Khurram", "S003", "0303-1234567", "umama123", "B25F2677AI147", "AI"));
 
     while (true) {
-        std::cout << "\n=== CampusTrace System ===\n";
-        std::cout << "1. Admin Login\n";
-        std::cout << "2. Student Login\n";
+        clearScreen();
+        std::cout << "Welcome to CampusTrace\n";
+        std::cout << "1. Login as Admin\n";
+        std::cout << "2. Login as Student\n";
         std::cout << "3. Exit\n";
         std::cout << "Choice: ";
         
-        int choice;
-        if (!(std::cin >> choice)) {
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            std::cout << "Invalid input. Try again.\n";
-            continue;
+        int mainChoice;
+        if (!(std::cin >> mainChoice)) { 
+            std::cin.clear(); 
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); 
+            continue; 
         }
 
-        if (choice == 3) {
-            std::cout << "Exiting CampusTrace. Goodbye!\n";
+        if (mainChoice == 3) {
+            fileManager.saveItems(allItems);
+            fileManager.saveClaims(allClaims);
+            std::cout << "Goodbye\n";
             break;
         }
-        
-        if (choice != 1 && choice != 2) {
-            std::cout << "Invalid choice.\n";
+
+        if (mainChoice != 1 && mainChoice != 2) continue;
+
+        std::string id, pass;
+        std::cout << "Enter ID: "; std::cin >> id;
+        std::cout << "Enter Password: "; std::cin >> pass;
+
+        Person* loggedIn = nullptr;
+        for (Person* p : allUsers) {
+            if (p->getID() == id && p->getPassword() == pass) {
+                if (mainChoice == 1 && dynamic_cast<Admin*>(p)) loggedIn = p;
+                if (mainChoice == 2 && dynamic_cast<Student*>(p)) loggedIn = p;
+            }
+        }
+
+        if (!loggedIn) {
+            std::cout << "Login Failed. Try again.\n";
+            std::cin.ignore(); std::cin.get();
             continue;
         }
 
-        std::string id, pass;
-        std::cout << "Enter ID: ";
-        std::cin >> id;
-        std::cout << "Enter Password: ";
-        std::cin >> pass;
+        if (mainChoice == 1) {
+            Admin* admin = dynamic_cast<Admin*>(loggedIn);
+            while (true) {
+                clearScreen();
+                std::cout << "=== Admin Menu ===\n";
+                std::cout << "1. Register new found item\n";
+                std::cout << "2. View all items\n";
+                std::cout << "3. Review pending claims\n";
+                std::cout << "4. Process handover\n";
+                std::cout << "5. View flagged students\n";
+                std::cout << "6. Generate report\n";
+                std::cout << "7. Logout\n";
+                std::cout << "Choice: ";
+                
+                int adminChoice;
+                if (!(std::cin >> adminChoice)) { std::cin.clear(); std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); continue; }
 
-        Person* loggedInUser = nullptr;
-        for (Person* p : globalUsers) {
-            if (p->getID() == id && p->getPassword() == pass) {
-                if (choice == 1 && dynamic_cast<Admin*>(p) != nullptr) {
-                    loggedInUser = p;
-                    break;
-                } else if (choice == 2 && dynamic_cast<Student*>(p) != nullptr) {
-                    loggedInUser = p;
+                if (adminChoice == 1) {
+                    admin->addItem(allItems);
+                    fileManager.saveItems(allItems);
+                } else if (adminChoice == 2) {
+                    for (Item* item : allItems) {
+                        item->getDetails();
+                        if (item->isExpired()) std::cout << " (Expired)";
+                        std::cout << "\n";
+                    }
+                } else if (adminChoice == 3) {
+                    for (Claim* claim : allClaims) {
+                        if (claim->getClaimStatus() == "Pending") {
+                            std::cout << "Claim ID: " << claim->getClaimID() << " | Proof: " << claim->getProof() << "\n";
+                            std::cout << "Approve (1) or Reject (2)? ";
+                            int dec; 
+                            if (!(std::cin >> dec)) { std::cin.clear(); std::cin.ignore(10000, '\n'); continue; }
+                            if (dec == 1) {
+                                admin->approveClaim(claim);
+                            } else if (dec == 2) {
+                                Student* s = dynamic_cast<Student*>(claim->getPerson());
+                                if(s) admin->rejectClaim(claim, s);
+                            }
+                            fileManager.saveClaims(allClaims);
+                        }
+                    }
+                } else if (adminChoice == 4) {
+                    std::cout << "Enter Claim ID: ";
+                    std::string cID; std::cin >> cID;
+                    Claim* foundClaim = nullptr;
+                    for (Claim* c : allClaims) {
+                        if (c->getClaimID() == cID) foundClaim = c;
+                    }
+                    if (foundClaim) {
+                        std::cout << "Enter Witness Name: ";
+                        std::string witness; std::cin >> witness;
+                        admin->processHandover(foundClaim, witness);
+                        fileManager.saveItems(allItems);
+                    } else {
+                        std::cout << "Claim not found.\n";
+                    }
+                } else if (adminChoice == 5) {
+                    for (Person* p : allUsers) {
+                        Student* s = dynamic_cast<Student*>(p);
+                        if (s && s->getIsFlagged()) {
+                            std::cout << "- " << s->getName() << " (ID: " << s->getID() << ")\n";
+                        }
+                    }
+                } else if (adminChoice == 6) {
+                    Report rpt("R1", admin->getName(), "All", allItems);
+                    rpt.generateReport();
+                    rpt.countByStatus();
+                    rpt.listExpired();
+                } else if (adminChoice == 7) {
                     break;
                 }
+                std::cout << "Press enter to continue...";
+                std::cin.ignore(); std::cin.get();
             }
-        }
+        } else if (mainChoice == 2) {
+            Student* student = dynamic_cast<Student*>(loggedIn);
+            MatchEngine matchEngine;
+            while (true) {
+                clearScreen();
+                std::cout << "=== Student Menu ===\n";
+                std::cout << "1. Search for item\n";
+                std::cout << "2. Submit claim\n";
+                std::cout << "3. View my claims\n";
+                std::cout << "4. View my status\n";
+                std::cout << "5. Logout\n";
+                std::cout << "Choice: ";
+                
+                int studentChoice;
+                if (!(std::cin >> studentChoice)) { std::cin.clear(); std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); continue; }
 
-        if (loggedInUser) {
-            std::cout << "Login successful! Welcome, " << loggedInUser->getName() << ".\n";
-            if (choice == 1) {
-                adminMenu(dynamic_cast<Admin*>(loggedInUser), fm);
-            } else {
-                studentMenu(dynamic_cast<Student*>(loggedInUser), fm);
+                if (studentChoice == 1) {
+                    std::string keyword;
+                    std::cout << "Enter keyword: "; std::cin >> keyword;
+                    SearchLog log("SL" + std::to_string(time(0)), keyword, currentDate(), student->getID());
+                    log.logSearch();
+                    std::vector<Item*> results = matchEngine.searchByKeyword(keyword, allItems);
+                    for (Item* item : results) {
+                        item->getDetails();
+                        std::cout << "\n";
+                    }
+                } else if (studentChoice == 2) {
+                    std::string keyword;
+                    std::cout << "Search item to claim: "; std::cin >> keyword;
+                    std::vector<Item*> results = matchEngine.searchByKeyword(keyword, allItems);
+                    for (Item* item : results) {
+                        item->getDetails();
+                        std::cout << "\n";
+                    }
+                    std::string iID;
+                    std::cout << "Enter item ID to claim: "; std::cin >> iID;
+                    Item* targetItem = nullptr;
+                    for (Item* item : results) {
+                        if (item->getItemID() == iID) targetItem = item;
+                    }
+                    if (targetItem) {
+                        std::string proof;
+                        std::cout << "Enter proof description: "; std::cin >> proof;
+                        std::string cID = "C" + std::to_string(time(0));
+                        Claim* claim = new Claim(cID, proof, "Pending", targetItem, "TXN" + std::to_string(time(0)), currentDate(), student);
+                        claim->submitClaim();
+                        allClaims.push_back(claim);
+                        fileManager.saveClaims(allClaims);
+                    } else {
+                        std::cout << "Item not found in results.\n";
+                    }
+                } else if (studentChoice == 3) {
+                    for (Claim* claim : allClaims) {
+                        if (claim->getPerson() == student) {
+                            claim->processTransaction();
+                        }
+                    }
+                } else if (studentChoice == 4) {
+                    student->viewStatus();
+                } else if (studentChoice == 5) {
+                    break;
+                }
+                std::cout << "Press enter to continue...";
+                std::cin.ignore(); std::cin.get();
             }
-        } else {
-            std::cout << "Invalid credentials or role. Please try again.\n";
         }
     }
-
-    // Cleanup dynamically allocated memory
-    for (Item* item : globalItems) delete item;
-    for (Claim* claim : globalClaims) delete claim;
-    for (Person* person : globalUsers) delete person;
+    
+    // Cleanup
+    for (Item* i : allItems) delete i;
+    for (Claim* c : allClaims) delete c;
+    for (Person* p : allUsers) delete p;
 
     return 0;
 }

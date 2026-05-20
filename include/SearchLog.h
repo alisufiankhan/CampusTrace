@@ -1,33 +1,18 @@
-#ifndef SEARCH_LOG_H
-#define SEARCH_LOG_H
-
+#ifndef SEARCHLOG_H
+#define SEARCHLOG_H
 #include <string>
 #include <vector>
 
-// Logs search activities by students
 class SearchLog {
 private:
-    std::string logID;
-    std::string keyword;
-    std::string timestamp;
-    std::string studentID;
-
+    std::string logID, keyword, timestamp, studentID;
 public:
-    // Constructor to initialize search log details
-    SearchLog(std::string logID, std::string keyword, 
-              std::string timestamp, std::string studentID);
-
-    // Logs a new search query
+    SearchLog(std::string logID, std::string keyword, std::string timestamp, std::string studentID);
     void logSearch();
-
-    // Returns the history of search logs
-    std::vector<std::string> getHistory();
-
-    // Getters
+    void getHistory();
     std::string getLogID();
     std::string getKeyword();
     std::string getTimestamp();
     std::string getStudentID();
 };
-
 #endif

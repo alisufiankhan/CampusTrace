@@ -9,7 +9,9 @@ Person::Person(std::string name, std::string ID, std::string contact, std::strin
 }
 
 bool Person::login() {
-    std::string inputID, inputPassword;
+    std::string inputID;
+    std::string inputPassword;
+    
     std::cout << "Enter ID: ";
     std::cin >> inputID;
     std::cout << "Enter Password: ";
@@ -24,7 +26,7 @@ bool Person::login() {
 void Person::getInfo() {
     std::cout << "Name: " << name << "\n"
               << "ID: " << ID << "\n"
-              << "Contact: " << contact << std::endl;
+              << "Contact: " << contact << "\n";
 }
 
 std::string Person::getName() {
